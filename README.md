@@ -17,9 +17,9 @@ If you find our work helpful, please consider citing:
 ```bibtex
 @inproceedings{badi2025mista,
   title     = {MISTA: Compact Multi-Identity Structure-Aware Tensorized Avatars},
-  author    = {Badi, Oumaima and Jiang, Xiaoran and Morin, Luce and Sj{\"o}str{\"o}m, M{\aa}rten},
+  author    = {Oumaima Oumaima and Xiaoran Jiang and Luce Morin and Marten Sjostrom,
   booktitle = {Proceedings of IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
-  year      = {2025}
+  year      = {2026}
 }
 
 
