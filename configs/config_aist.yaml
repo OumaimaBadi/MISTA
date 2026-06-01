@@ -1,29 +1,33 @@
 defaults:
   - _self_
-  - dataset: zjumocap_377_mono
-  - pose_correction: direct
+  - dataset: multi_aist++
+  - pose_correction: none
   - texture: shallow_mlp
   - rigid: skinning_field
   - non_rigid: hashgrid
   - option:
-      - iter15k
+      - iter50k
 
+exp_root: tt4d_uv_noxyz_noopacity_aist_9p
 hydra:
   run:
-    dir: exp/${name}
+    dir: ${exp_root}/${exp_name}
   job:
     chdir: false
 
-name: ${dataset_name}-${pose_name}-${rigid_name}-${non_rigid_name}-${texture_name}-${tag}
+exp_name: multi_aist++-${pose_name}-${rigid_name}-${non_rigid_name}-${texture_name}
+
 tag: default
 
+exp_dir: ${exp_root}/${exp_name}
+smpl_uv_npz: "/src/body_models/misc/smpl_uv_coords.npz"
 model:
   gaussian:
-    use_sh: true
+    use_sh: false
     sh_degree: 3
     delay: 1000
   pose_correction:
-    name: direct
+    name: none
   deformer:
     rigid:
       name: identity
@@ -31,23 +35,23 @@ model:
       name: identity
 
 dataset:
-  preload: true
+  name: MultiPersonZJUMoCap
+  preload: false
   train_smpl: false
-
   mode: ${mode}
   test_mode: view
   predict_seq: 0
   freeview: false
-
   resolution: -1
   padding: 0.1
   white_background: false
   data_device: cuda
-  eval: false
+  eval: true
 
 opt:
-  iterations: 60000
+  iterations: 15000
   grad_clip: 0.1
+
 
   # learning rates
   position_lr_init: 0.00016
@@ -62,8 +66,8 @@ opt:
   pose_correction_lr: 1e-4
   rigid_lr: 1e-4
   non_rigid_lr: 1e-3
-  lr_ratio: 0.01
-
+  lr_ratio: 1e-3
+  lambda_tv: 0.
   # loss weights
   lambda_l1: 1.
   lambda_dssim: 0.
@@ -73,37 +77,48 @@ opt:
   lambda_mask: 0.1
   lambda_opacity: 0.
   lambda_skinning: [10,1000,0.1]
-  lambda_pose: 0.
+  #lambda_pose: 0.
   lambda_aiap_xyz: 1.
   lambda_aiap_cov: 100.
 
   # densification configs
-  percent_dense: 0.01
-  densification_interval: 100
-  opacity_reset_interval: 3000
-  densify_from_iter: 500
-  densify_until_iter: 45000
-  densify_grad_threshold: 0.0002
-  opacity_threshold: 0.05
+  # percent_dense: 0.01
+  # densification_interval: 100
+  # opacity_reset_interval: 3000
+  # densify_from_iter: 500
+  # densify_until_iter: 45000
+  # #densify_grad_threshold: 0.0002
+  # opacity_threshold: 0.05
 
 pipeline:
   convert_SHs_python: true
   compute_cov3D_python: true
   debug: false
 
-  pose_noise: 0.1
+  #pose_noise: 0.1
 
 debug_from: -1
 detect_anomaly: false
 test_iterations: []
-test_interval: 2000
-save_iterations: [30000]
-seed: -1
+test_interval: 1000
+save_iterations: [] 
+seed: 123
 checkpoint_iterations: []
-start_checkpoint: null
 wandb_disable: false
+wandb_project: migs_default
 
 mode: train
 load_ckpt: null
 evaluate: true
 clean: true
+
+train_mode: scratch
+start_checkpoint: null
+# finetune:
+#   identity: new
+#   noise_scale: 0.05
+#   iterations: 15000
+#   lr_id: 3e-3
+#   lr_tex: 1e-3
+#   include_color_in_ft_opt: true
+#   data_identity_idx: 8

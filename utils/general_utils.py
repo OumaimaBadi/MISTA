@@ -23,6 +23,31 @@ from skimage.metrics import structural_similarity as compute_ssim
 
 from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+import hashlib, struct
+from contextlib import contextmanager
+
+def _hash_to_uint32(s: str) -> int:
+    h = hashlib.sha256(s.encode("utf-8")).digest()
+    return struct.unpack("<I", h[:4])[0]
+
+def make_subseed(base_seed: int, namespace: str) -> int:
+    return (int(base_seed) ^ _hash_to_uint32(str(namespace))) & 0x7fffffff
+
+@contextmanager
+def torch_rng_context(seed: int):
+    """
+    Isole l'état RNG (CPU + CUDA) pendant le bloc.
+    Tout tirage aléatoire (init de poids, etc.) se base sur 'seed',
+    puis l'état global est restauré automatiquement à la sortie.
+    """
+    devices = []
+    if torch.cuda.is_available():
+        devices = [torch.cuda.current_device()]
+    with torch.random.fork_rng(devices=devices):
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+        yield
 
 def inverse_sigmoid(x):
     return torch.log(x/(1-x))
@@ -206,16 +231,30 @@ def build_scaling_rotation(s, r):
     L = R @ L
     return L
 
+# def fix_random(seed):
+#     if seed >= 0:
+#         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+#         random.seed(seed)
+#         np.random.seed(seed)
+#         torch.manual_seed(seed)
+#         torch.cuda.manual_seed(seed)
+#         torch.backends.cudnn.benchmark = False
+#         torch.backends.cudnn.deterministic = True
+#         torch.use_deterministic_algorithms(True)
+
 def fix_random(seed):
     if seed >= 0:
-        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+        print(f"🔐 Fixing seed: {seed}")
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"  # for reproducibility on CUDA
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
-        torch.use_deterministic_algorithms(True)
+        torch.use_deterministic_algorithms(True, warn_only=True)
 
 # evaluation metrics
 class Evaluator(nn.Module):
@@ -241,6 +280,12 @@ class PSNR(nn.Module):
 
     def forward(self, inputs, targets, valid_mask=None, reduction='mean'):
         assert reduction in ['mean', 'none']
+
+        if inputs.device != targets.device:
+            targets = targets.to(inputs.device)
+        if valid_mask is not None and valid_mask.device != inputs.device:
+            valid_mask = valid_mask.to(inputs.device)
+
         value = (inputs - targets) ** 2
         if valid_mask is not None:
             value = value[valid_mask]
@@ -280,6 +325,7 @@ class LPIPS(nn.Module):
         self.loss_fn_vgg.eval()
 
     def forward(self, inputs, targets, valid_mask=None, reduction='mean'):
+        device = inputs.device 
         if valid_mask is not None:
             x, y, w, h = cv2.boundingRect(valid_mask.cpu().numpy().astype(np.uint8))
             img_pred = inputs[:, y:y + h, x:x + w]
@@ -287,6 +333,9 @@ class LPIPS(nn.Module):
         else:
             img_pred = inputs
             img_gt = targets
+            
+        img_pred = img_pred.to(device)
+        img_gt = img_gt.to(device)
 
         score = self.loss_fn_vgg(img_pred, img_gt, normalize=True)
         return score.flatten()

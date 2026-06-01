@@ -101,3 +101,164 @@ def aiap_loss(x_canonical, x_deformed, n_neighbors=5, nn_ix=None):
     loss = F.l1_loss(dists_canonical, dists_deformed)
 
     return loss
+
+
+# MASKED METRICS FOR ROI EVALUATION (Union of GT and Rendered masks)
+def masked_l1_loss(img1, img2, mask):
+    """
+    L1 loss masked to region of interest.
+    
+    Args:
+        img1: [3, H, W] rendered image
+        img2: [3, H, W] GT image  
+        mask: [1, H, W] binary mask (union of GT and rendered)
+    
+    Returns:
+        Masked L1 loss (scalar)
+    """
+    # Binarize mask
+    mask_bin = (mask > 0.5).float()
+    
+    # Compute error only in masked region
+    diff = torch.abs(img1 - img2) * mask_bin  # [3, H, W]
+    
+    # Normalize by number of valid pixels
+    n_valid = mask_bin.sum() + 1e-8
+    return diff.sum() / (n_valid * 3)  # Divide by 3 for RGB channels
+
+
+def masked_mse_loss(img1, img2, mask):
+    """
+    MSE loss masked to region of interest.
+    
+    Args:
+        img1: [3, H, W]
+        img2: [3, H, W]
+        mask: [1, H, W]
+    
+    Returns:
+        Masked MSE loss (scalar)
+    """
+    mask_bin = (mask > 0.5).float()
+    diff = ((img1 - img2) ** 2) * mask_bin
+    n_valid = mask_bin.sum() + 1e-8
+    return diff.sum() / (n_valid * 3)
+
+
+def masked_psnr(img1, img2, mask):
+    """
+    PSNR masked to region of interest.
+    
+    Args:
+        img1: [3, H, W]
+        img2: [3, H, W]
+        mask: [1, H, W]
+    
+    Returns:
+        PSNR in dB (scalar)
+    """
+    mse = masked_mse_loss(img1, img2, mask)
+    if mse < 1e-10:
+        return 100.0
+    return -10 * torch.log10(mse).item()
+
+
+def masked_ssim(img1, img2, mask, window_size=11):
+    """
+    SSIM masked to region of interest.
+    
+    Args:
+        img1: [3, H, W]
+        img2: [3, H, W]
+        mask: [1, H, W]
+    
+    Returns:
+        Masked SSIM (scalar)
+    """
+    mask_bin = (mask > 0.5).float()
+    
+    channel = img1.size(-3)
+    window = create_window(window_size, channel)
+    if img1.is_cuda:
+        window = window.cuda(img1.get_device())
+    window = window.type_as(img1)
+    
+    # Compute SSIM map (per-pixel)
+    ssim_map = _ssim_map(img1, img2, window, window_size, channel)
+    
+    # Apply mask (broadcast across channels)
+    ssim_map_masked = ssim_map * mask_bin  # [3, H, W]
+    
+    # Average over valid pixels
+    n_valid = mask_bin.sum() + 1e-8
+    return (ssim_map_masked.sum() / (n_valid * channel)).item()
+
+
+def _ssim_map(img1, img2, window, window_size, channel):
+    """
+    Compute per-pixel SSIM map.
+    
+    Returns:
+        ssim_map: [3, H, W] per-pixel SSIM values
+    """
+    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
+    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
+
+    mu1_sq = mu1.pow(2)
+    mu2_sq = mu2.pow(2)
+    mu1_mu2 = mu1 * mu2
+
+    sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
+    sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
+    sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
+
+    C1 = 0.01 ** 2
+    C2 = 0.03 ** 2
+
+    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+    
+    return ssim_map
+
+
+def compute_union_mask(gt_mask, rendered_mask):
+    """
+    Compute UNION of GT and rendered masks.
+    Detects both missing parts AND artifacts outside silhouette.
+    
+    Args:
+        gt_mask: [1, H, W] ground truth mask
+        rendered_mask: [1, H, W] rendered opacity mask
+    
+    Returns:
+        union_mask: [1, H, W] binary mask (GT ∪ Rendered)
+    """
+    # Binarize both masks
+    gt_bin = (gt_mask > 0.5).float()
+    rend_bin = (rendered_mask > 0.5).float()
+    
+    # Union: pixel is 1 if it's in GT OR in Rendered
+    union = torch.clamp(gt_bin + rend_bin, 0, 1)
+    
+    return union
+
+
+def compute_artifact_metrics(gt_mask, rendered_mask):
+    """
+    Compute artifact metrics.
+    
+    Returns:
+        overflow_ratio: Fraction of rendered pixels OUTSIDE GT (artifacts)
+        missing_ratio: Fraction of GT pixels NOT rendered (missing parts)
+    """
+    gt_bin = (gt_mask > 0.5).float()
+    rend_bin = (rendered_mask > 0.5).float()
+    
+    # Overflow: pixels rendered but NOT in GT (artifacts!)
+    overflow = rend_bin * (1 - gt_bin)
+    overflow_ratio = overflow.sum() / (rend_bin.sum() + 1e-8)
+    
+    # Missing: pixels in GT but NOT rendered
+    missing = gt_bin * (1 - rend_bin)
+    missing_ratio = missing.sum() / (gt_bin.sum() + 1e-8)
+    
+    return overflow_ratio.item(), missing_ratio.item()

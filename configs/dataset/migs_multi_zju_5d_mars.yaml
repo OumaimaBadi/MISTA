@@ -1,0 +1,92 @@
+# @package _global_
+defaults:
+  - zju_386_mono@datasets.zju_386_mono
+  - zju_387_mono@datasets.zju_387_mono
+  - zju_377_mono@datasets.zju_377_mono
+  - zju_392_mono@datasets.zju_392_mono
+  - zju_315_mono@datasets.zju_315_mono
+  - zju_394_mono@datasets.zju_394_mono
+  - zju_390_mono@datasets.zju_390_mono
+  - zju_393_mono@datasets.zju_393_mono
+  # - zju_313_mono@datasets.zju_313_mono   #  Finetuning person
+
+dataset:
+  name: MultiPersonZJUMoCap
+  names: [
+    'zju_386_mono',
+    'zju_387_mono',
+    'zju_377_mono',
+    'zju_392_mono',
+    'zju_315_mono',
+    'zju_394_mono',
+    'zju_393_mono',
+    'zju_390_mono'
+  ]
+  smpl_uv_npz: "/src/body_models/misc/smpl_uv_coords.npz"
+
+migs:
+
+  type: tt5d_color_split
+  init_rank: 64
+  target_ratio: 0.05
+
+  # Final number of identities (SVD starts with I=1 and expands to this value)
+  final_identities: 8
+  min_r1: 28  
+  r1_cap: 36
+  identity_bias: 0.90     # < 1.25 to calm r1
+  mid_boost: 1.15         # give more to 50–40–25
+  weight_power: 1.15      # favor larger modes a bit
+  # Optional manual hint for the rank right before M. 
+  # Set to null for automatic selection.
+  rM_hint: null
+
+  # Hard cap for the rank right before M (must be <= M). 
+  # For M=43, keep 43.
+  #cap_last: 43
+  cap_geo: 11
+  rM_colo: 32
+  cap_last: 43
+  save_foldpack_vis: true
+  delay: 1000
+  rank: null
+  tt_shape: null
+  verbose: true
+  add_identity: false
+
+  use_mars: false
+  position_lr_init: 1.6e-4
+  position_lr_final: 1.6e-6
+  tt_lrs: [1.6e-4, 1.6e-4, 1.6e-4,1.6e-4]
+  tt_final_lrs: [1.6e-6, 1.6e-6, 1.6e-6,1.6e-6]
+  # tt_lrs: [1e-3, 1e-3, 1e-3, 1e-3]
+  # tt_final_lrs: [1e-5 ,1e-5, 1e-5,1e-5]
+  gaussian_vis:
+    iterations: [1000, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+
+
+  mars:
+      pi: 0.1
+      initial_mask_prob: 0.99
+      enable_temp_decay: true
+      temperature: 1.0
+      temp_gamma: 0.99995
+      temp_end: 0.35
+      warmup_iterations: 15000 
+      mask_warmup_iterations: 10000
+      phi_grad_delay: 15000 
+      min_mask_value: 0.0
+      grad_clip_value: 1.0
+      gamma: -0.1
+      zeta: 1.1
+      mars_lr: 0.0012
+      sigma_inv: 0.0
+      ste: true
+      eval_sample: false
+      eval_logits_threshold: 0.0
+      lambda_sparsity: 1e-5
+      lambda_binary: 0.0
+
+
+# Optional: pick a single person appearance globally
+appearance_identity: null

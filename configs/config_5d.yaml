@@ -1,0 +1,131 @@
+defaults:
+  - _self_
+  - dataset: migs_multi_zju_5d_mars
+  - pose_correction: none
+  - texture: shallow_mlp
+  - rigid: skinning_field
+  - non_rigid: hashgrid
+  - option:
+      - iter50k
+
+exp_root: MISTA
+hydra:
+  run:
+    dir: ${exp_root}/${exp_name}
+  job:
+    chdir: false
+
+exp_name: multi_zju_5d-${pose_name}-${rigid_name}-${non_rigid_name}-${texture_name}
+
+tag: default
+
+exp_dir: ${exp_root}/${exp_name}
+smpl_uv_npz: "/src/body_models/misc/smpl_uv_coords.npz"
+
+model:
+  gaussian:
+    use_sh: false
+    sh_degree: 3
+    delay: 1000
+  pose_correction:
+    name: none
+  deformer:
+    rigid:
+      name: identity
+    non_rigid:
+      name: identity
+
+dataset:
+  name: MultiPersonZJUMoCap
+  preload: false
+  train_smpl: false
+  mode: ${mode}
+  test_mode: view
+  predict_seq: 0
+  freeview: false
+  resolution: -1
+  padding: 0.1
+  white_background: false
+  data_device: cuda
+  eval: true
+
+opt:
+  iterations: 15000
+  grad_clip: 0.1
+
+  # learning rates
+  position_lr_init: 0.00016
+  position_lr_final: 0.0000016
+  position_lr_delay_mult: 0.01
+  position_lr_max_steps: 30000
+  feature_lr: 0.0025
+  opacity_lr: 0.05
+  scaling_lr: 0.005
+  rotation_lr: 0.001
+
+  pose_correction_lr: 1e-4
+  rigid_lr: 1e-4
+  non_rigid_lr: 1e-3
+  lr_ratio: 1e-3
+
+  # loss weights
+  lambda_l1: 1.
+  lambda_dssim: 0.
+  lambda_perceptual: 1e-2
+  mask_loss_type: l1
+#  lambda_mask: [0.1,5000,0]
+  lambda_mask: 0.1
+  lambda_opacity: 0.
+  lambda_skinning: [10,1000,0.1]
+  #lambda_pose: 0.
+  lambda_aiap_xyz: 1.
+  lambda_aiap_cov: 100.
+
+  # densification configs
+  # percent_dense: 0.01
+  # densification_interval: 100
+  # opacity_reset_interval: 3000
+  # densify_from_iter: 500
+  # densify_until_iter: 45000
+  # #densify_grad_threshold: 0.0002
+  # opacity_threshold: 0.05
+
+pipeline:
+  convert_SHs_python: true
+  compute_cov3D_python: true
+  debug: false
+
+  #pose_noise: 0.1
+
+debug_from: -1
+detect_anomaly: false
+test_iterations: []
+test_interval: 1000
+save_iterations: [] 
+seed: 123
+checkpoint_iterations: [0,1,50000] 
+wandb_disable: false
+wandb_project: migs_default
+
+mode: train
+load_ckpt: null
+evaluate: true
+clean: true
+
+train_mode: scratch
+start_checkpoint: null
+# finetune:
+#   identity: new
+#   noise_scale: 0.05
+#   iterations: 15000
+#   lr_id: 3e-3
+#   lr_tex: 1e-3
+#   include_color_in_ft_opt: true
+#   data_identity_idx: 8 # use the 6th person (index 5) as FT data
+
+export:
+  enable: true
+  dir: "${exp_dir}/exports"
+  iters: [1, 500, 1000, 2000, 5000, 10000, 20000, 30000, 50000]  
+  include_color: true                             # only used for after_texture
+  per_iter_dir: true

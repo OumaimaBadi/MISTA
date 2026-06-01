@@ -1,4 +1,3 @@
-#
 # Copyright (C) 2023, Inria
 # GRAPHDECO research group, https://team.inria.fr/graphdeco
 # All rights reserved.
@@ -7,17 +6,39 @@
 # under the terms of the LICENSE.md file.
 #
 # For inquiries contact  george.drettakis@inria.fr
-#
 
 import torch
 import math
 import numpy as np
-from typing import NamedTuple
+from typing import Optional
 
-class BasicPointCloud(NamedTuple):
-    points : np.array
-    colors : np.array
-    normals : np.array
+class BasicPointCloud:
+    """
+    Point cloud container with optional mesh binding data.
+    
+    Attributes:
+        points (np.ndarray): (N, 3) XYZ positions
+        colors (np.ndarray): (N, 3) RGB in [0, 1]
+        normals (np.ndarray): (N, 3) normal vectors
+        face_ids (np.ndarray, optional): (N,) mesh face indices for binding
+        bary_coords (np.ndarray, optional): (N, 3) barycentric coordinates
+        uv (np.ndarray, optional): (N, 2) UV coordinates in [0, 1]
+    """
+    def __init__(
+        self,
+        points: np.ndarray,
+        colors: np.ndarray,
+        normals: np.ndarray,
+        face_ids: Optional[np.ndarray] = None,
+        bary_coords: Optional[np.ndarray] = None,
+        uv: Optional[np.ndarray] = None,
+    ):
+        self.points = points
+        self.colors = colors
+        self.normals = normals
+        self.face_ids = face_ids
+        self.bary_coords = bary_coords
+        self.uv = uv
 
 def geom_transform_points(points, transf_matrix):
     P, _ = points.shape

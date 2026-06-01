@@ -3,5 +3,6 @@
 opt:
   iterations: 50000
 
-  lr_ratio: 0.0215
-  densify_until_iter: 25000
+  lr_ratio: 0.1
+
+test_interval: 1000

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch3d.transforms as tf
+from utils.general_utils import make_subseed, torch_rng_context
 
 from models.network_utils import (HierarchicalPoseEncoder,
                                   VanillaCondMLP,
@@ -16,43 +17,52 @@ class NonRigidDeform(nn.Module):
     def forward(self, gaussians, iteration, camera, compute_loss=True):
         raise NotImplementedError
 
+
 class Identity(NonRigidDeform):
-    def __init__(self, cfg, metadata):
+    def __init__(self, cfg, metadata, root_seed=None):
         super().__init__(cfg)
 
     def forward(self, gaussians, iteration, camera, compute_loss=True):
         return gaussians, {}
 
+
+
 class MLP(NonRigidDeform):
-    def __init__(self, cfg, metadata):
+    def __init__(self, cfg, metadata, root_seed=None):
         super().__init__(cfg)
-        self.pose_encoder = HierarchicalPoseEncoder(**cfg.pose_encoder)
+        base_seed = int(root_seed) if root_seed is not None else int(getattr(cfg, "seed", metadata.get("seed", 123)))
+
+        # Pose encoder (déterministe)
+        with torch_rng_context(make_subseed(base_seed, "nonrigid/pose_encoder")):
+            self.pose_encoder = HierarchicalPoseEncoder(**cfg.pose_encoder)
         d_cond = self.pose_encoder.n_output_dims
 
-        # add latent code
+        # Latent temporel optionnel
         self.latent_dim = cfg.get('latent_dim', 0)
         if self.latent_dim > 0:
             d_cond += self.latent_dim
             self.frame_dict = metadata['frame_dict']
-            self.latent = nn.Embedding(len(self.frame_dict), self.latent_dim)
 
-        d_in = 3
-        d_out = 3 + 3 + 4
+        d_in, d_out = 3, 3 + 3 + 4
         self.feature_dim = cfg.get('feature_dim', 0)
         d_out += self.feature_dim
 
-        # output dimension: position + scale + rotation
-        self.mlp = VanillaCondMLP(d_in, d_cond, d_out, cfg.mlp)
-        self.aabb = metadata['aabb']
+        # MLP (déterministe) + embedding latent (déterministe)
+        with torch_rng_context(make_subseed(base_seed, "nonrigid/mlp")):
+            self.mlp = VanillaCondMLP(d_in, d_cond, d_out, cfg.mlp)
+            if self.latent_dim > 0:
+                self.latent = nn.Embedding(len(self.frame_dict), self.latent_dim)
 
+        self.aabb = metadata['aabb']
         self.delay = cfg.get('delay', 0)
 
-
     def forward(self, gaussians, iteration, camera, compute_loss=True):
+    
         if iteration < self.delay:
             deformed_gaussians = gaussians.clone()
             if self.feature_dim > 0:
-                setattr(deformed_gaussians, "non_rigid_feature", torch.zeros(gaussians.get_xyz.shape[0], self.feature_dim).cuda())
+                setattr(deformed_gaussians, "non_rigid_feature",
+                        torch.zeros(gaussians.get_xyz.shape[0], self.feature_dim).cuda())
             return deformed_gaussians, {}
 
         rots = camera.rots
@@ -97,10 +107,9 @@ class MLP(NonRigidDeform):
             deformed_gaussians._rotation = gaussians._rotation + delta_rot
         elif rot_offset == 'mult':
             q1 = delta_rot
-            q1[:, 0] = 1. # [1,0,0,0] represents identity rotation
+            q1[:, 0] = 1.  # [1,0,0,0] représente l'identité
             delta_rot = delta_rot[:, 1:]
             q2 = gaussians._rotation
-            # deformed_gaussians._rotation = quaternion_multiply(q1, q2)
             deformed_gaussians._rotation = tf.quaternion_multiply(q1, q2)
         else:
             raise ValueError
@@ -109,28 +118,30 @@ class MLP(NonRigidDeform):
             setattr(deformed_gaussians, "non_rigid_feature", deltas[:, 10:])
 
         if compute_loss:
-            # regularization
             loss_xyz = torch.norm(delta_xyz, p=2, dim=1).mean()
             loss_scale = torch.norm(delta_scale, p=1, dim=1).mean()
             loss_rot = torch.norm(delta_rot, p=1, dim=1).mean()
-            loss_reg = {
-                'nr_xyz': loss_xyz,
-                'nr_scale': loss_scale,
-                'nr_rot': loss_rot
-            }
+            loss_reg = {'nr_xyz': loss_xyz, 'nr_scale': loss_scale, 'nr_rot': loss_rot}
         else:
             loss_reg = {}
         return deformed_gaussians, loss_reg
 
 
 class HannwMLP(NonRigidDeform):
-    def __init__(self, cfg, metadata):
+    def __init__(self, cfg, metadata, root_seed=None):
         super().__init__(cfg)
-        self.pose_encoder = HierarchicalPoseEncoder(**cfg.pose_encoder)
-        # output dimension: position + scale + rotation
-        self.mlp = HannwCondMLP(3, self.pose_encoder.n_output_dims, 3 + 3 + 4, cfg.mlp, dim_coord=3)
-        self.aabb = metadata['aabb']
+        base_seed = int(root_seed) if root_seed is not None else int(getattr(cfg, "seed", metadata.get("seed", 123)))
 
+        # Pose encoder (déterministe)
+        with torch_rng_context(make_subseed(base_seed, "nonrigid/pose_encoder")):
+            self.pose_encoder = HierarchicalPoseEncoder(**cfg.pose_encoder)
+
+        # MLP hannw (déterministe)
+        with torch_rng_context(make_subseed(base_seed, "nonrigid/hannw")):
+            # output: position + scale + rotation
+            self.mlp = HannwCondMLP(3, self.pose_encoder.n_output_dims, 3 + 3 + 4, cfg.mlp, dim_coord=3)
+
+        self.aabb = metadata['aabb']
 
     def forward(self, gaussians, iteration, camera, compute_loss=True):
         rots = camera.rots
@@ -167,7 +178,7 @@ class HannwMLP(NonRigidDeform):
             deformed_gaussians._rotation = gaussians._rotation + delta_rot
         elif rot_offset == 'mult':
             q1 = delta_rot
-            q1[:, 0] = 1.  # [1,0,0,0] represents identity rotation
+            q1[:, 0] = 1.
             delta_rot = delta_rot[:, 1:]
             q2 = gaussians._rotation
             deformed_gaussians._rotation = quaternion_multiply(q1, q2)
@@ -175,39 +186,42 @@ class HannwMLP(NonRigidDeform):
             raise ValueError
 
         if compute_loss:
-            # regularization
             loss_xyz = torch.norm(delta_xyz, p=2, dim=1).mean()
             loss_scale = torch.norm(delta_scale, p=1, dim=1).mean()
             loss_rot = torch.norm(delta_rot, p=1, dim=1).mean()
-            loss_reg = {
-                'nr_xyz': loss_xyz,
-                'nr_scale': loss_scale,
-                'nr_rot': loss_rot
-            }
+            loss_reg = {'nr_xyz': loss_xyz, 'nr_scale': loss_scale, 'nr_rot': loss_rot}
         else:
             loss_reg = {}
         return deformed_gaussians, loss_reg
 
+
 class HashGridwithMLP(NonRigidDeform):
-    def __init__(self, cfg, metadata):
+    def __init__(self, cfg, metadata, root_seed=None):
         super().__init__(cfg)
-        self.pose_encoder = HierarchicalPoseEncoder(**cfg.pose_encoder)
+        base_seed = int(root_seed) if root_seed is not None else int(getattr(cfg, "seed", metadata.get("seed", 123)))
+
+        # Pose encoder (déterministe)
+        with torch_rng_context(make_subseed(base_seed, "nonrigid/pose_encoder")):
+            self.pose_encoder = HierarchicalPoseEncoder(**cfg.pose_encoder)
         d_cond = self.pose_encoder.n_output_dims
 
-        # add latent code
+        # Latent temporel optionnel
         self.latent_dim = cfg.get('latent_dim', 0)
         if self.latent_dim > 0:
             d_cond += self.latent_dim
             self.frame_dict = metadata['frame_dict']
-            self.latent = nn.Embedding(len(self.frame_dict), self.latent_dim)
 
         d_out = 3 + 3 + 4
         self.feature_dim = cfg.get('feature_dim', 0)
         d_out += self.feature_dim
-
         self.aabb = metadata['aabb']
-        self.hashgrid = HashGrid(cfg.hashgrid)
-        self.mlp = VanillaCondMLP(self.hashgrid.n_output_dims, d_cond, d_out, cfg.mlp)
+
+        # HashGrid + MLP (déterministes) + embedding latent (déterministe)
+        with torch_rng_context(make_subseed(base_seed, "nonrigid/hashgrid")):
+            self.hashgrid = HashGrid(cfg.hashgrid)
+            self.mlp = VanillaCondMLP(self.hashgrid.n_output_dims, d_cond, d_out, cfg.mlp)
+            if self.latent_dim > 0:
+                self.latent = nn.Embedding(len(self.frame_dict), self.latent_dim)
 
         self.delay = cfg.get('delay', 0)
 
@@ -262,10 +276,9 @@ class HashGridwithMLP(NonRigidDeform):
             deformed_gaussians._rotation = gaussians._rotation + delta_rot
         elif rot_offset == 'mult':
             q1 = delta_rot
-            q1[:, 0] = 1.  # [1,0,0,0] represents identity rotation
+            q1[:, 0] = 1.
             delta_rot = delta_rot[:, 1:]
             q2 = gaussians._rotation
-            # deformed_gaussians._rotation = quaternion_multiply(q1, q2)
             deformed_gaussians._rotation = tf.quaternion_multiply(q1, q2)
         else:
             raise ValueError
@@ -274,20 +287,16 @@ class HashGridwithMLP(NonRigidDeform):
             setattr(deformed_gaussians, "non_rigid_feature", deltas[:, 10:])
 
         if compute_loss:
-            # regularization
             loss_xyz = torch.norm(delta_xyz, p=2, dim=1).mean()
             loss_scale = torch.norm(delta_scale, p=1, dim=1).mean()
             loss_rot = torch.norm(delta_rot, p=1, dim=1).mean()
-            loss_reg = {
-                'nr_xyz': loss_xyz,
-                'nr_scale': loss_scale,
-                'nr_rot': loss_rot
-            }
+            loss_reg = {'nr_xyz': loss_xyz, 'nr_scale': loss_scale, 'nr_rot': loss_rot}
         else:
             loss_reg = {}
         return deformed_gaussians, loss_reg
 
-def get_non_rigid_deform(cfg, metadata):
+
+def get_non_rigid_deform(cfg, metadata, root_seed=None):
     name = cfg.name
     model_dict = {
         "identity": Identity,
@@ -295,4 +304,4 @@ def get_non_rigid_deform(cfg, metadata):
         "hannw_mlp": HannwMLP,
         "hashgrid": HashGridwithMLP,
     }
-    return model_dict[name](cfg, metadata)
+    return model_dict[name](cfg, metadata, root_seed=root_seed)

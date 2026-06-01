@@ -7,8 +7,9 @@ import pytorch3d.ops as ops
 import trimesh
 import igl
 
-from utils.general_utils import build_rotation
+from utils.general_utils import build_rotation, make_subseed, torch_rng_context
 from models.network_utils import get_skinning_mlp
+
 
 class RigidDeform(nn.Module):
     def __init__(self, cfg):
@@ -21,9 +22,10 @@ class RigidDeform(nn.Module):
     def regularization(self):
         return NotImplementedError
 
+
 class Identity(RigidDeform):
     """ Identity mapping for single frame reconstruction """
-    def __init__(self, cfg, metadata):
+    def __init__(self, cfg, metadata, root_seed=None):
         super().__init__(cfg)
 
     def forward(self, gaussians, iteration, camera):
@@ -32,8 +34,9 @@ class Identity(RigidDeform):
     def regularization(self):
         return {}
 
+
 class SMPLNN(RigidDeform):
-    def __init__(self, cfg, metadata):
+    def __init__(self, cfg, metadata, root_seed=None): 
         super().__init__(cfg)
         self.smpl_verts = torch.from_numpy(metadata["smpl_verts"]).float().cuda()
         self.skinning_weights = torch.from_numpy(metadata["skinning_weights"]).float().cuda()
@@ -43,7 +46,6 @@ class SMPLNN(RigidDeform):
         knn_ret = ops.knn_points(xyz.unsqueeze(0), self.smpl_verts.unsqueeze(0))
         p_idx = knn_ret.idx.squeeze()
         pts_W = self.skinning_weights[p_idx, :]
-
         return pts_W
 
     def forward(self, gaussians, iteration, camera):
@@ -73,15 +75,16 @@ class SMPLNN(RigidDeform):
     def regularization(self):
         return {}
 
-def create_voxel_grid(d, h, w, device='cpu'):
-    x_range = (torch.linspace(-1,1,steps=w,device=device)).view(1, 1, 1, w).expand(1, d, h, w)  # [1, H, W, D]
-    y_range = (torch.linspace(-1,1,steps=h,device=device)).view(1, 1, h, 1).expand(1, d, h, w)  # [1, H, W, D]
-    z_range = (torch.linspace(-1,1,steps=d,device=device)).view(1, d, 1, 1).expand(1, d, h, w)  # [1, H, W, D]
-    grid = torch.cat((x_range, y_range, z_range), dim=0).reshape(1, 3,-1).permute(0,2,1)
 
+def create_voxel_grid(d, h, w, device='cpu'):
+    x_range = (torch.linspace(-1, 1, steps=w, device=device)).view(1, 1, 1, w).expand(1, d, h, w)
+    y_range = (torch.linspace(-1, 1, steps=h, device=device)).view(1, 1, h, 1).expand(1, d, h, w)
+    z_range = (torch.linspace(-1, 1, steps=d, device=device)).view(1, d, 1, 1).expand(1, d, h, w)
+    grid = torch.cat((x_range, y_range, z_range), dim=0).reshape(1, 3, -1).permute(0, 2, 1)
     return grid
 
-''' Hierarchical softmax following the kinematic tree of the human body. Imporves convergence speed'''
+
+''' Hierarchical softmax following the kinematic tree of the human body. Improves convergence speed'''
 def hierarchical_softmax(x):
     def softmax(x):
         return F.softmax(x, dim=-1)
@@ -90,9 +93,7 @@ def hierarchical_softmax(x):
         return torch.sigmoid(x)
 
     n_point, n_dim = x.shape
-
     prob_all = torch.ones(n_point, 24, device=x.device)
-    # softmax_x = F.softmax(x, dim=-1)
     sigmoid_x = sigmoid(x).float()
 
     prob_all[:, [1, 2, 3]] = sigmoid_x[:, [0]] * softmax(x[:, [1, 2, 3]])
@@ -125,11 +126,11 @@ def hierarchical_softmax(x):
     prob_all[:, [22, 23]] = prob_all[:, [20, 21]] * (sigmoid_x[:, [22, 23]])
     prob_all[:, [20, 21]] = prob_all[:, [20, 21]] * (1 - sigmoid_x[:, [22, 23]])
 
-    # prob_all = prob_all.reshape(n_batch, n_point, prob_all.shape[-1])
     return prob_all
 
+
 class SkinningField(RigidDeform):
-    def __init__(self, cfg, metadata):
+    def __init__(self, cfg, metadata, root_seed=None):
         super().__init__(cfg)
         self.smpl_verts = metadata["smpl_verts"]
         self.skinning_weights = metadata["skinning_weights"]
@@ -140,21 +141,25 @@ class SkinningField(RigidDeform):
         self.distill = cfg.distill
         d, h, w = cfg.res // cfg.z_ratio, cfg.res, cfg.res
         self.resolution = (d, h, w)
+
+
+        base_seed = int(root_seed) if root_seed is not None else int(getattr(cfg, "seed", metadata.get("seed", 123)))
+
+        # Grille voxel (pas vraiment aléatoire, mais on la met sous contexte pour homogénéité)
         if self.distill:
-            self.grid = create_voxel_grid(d, h, w).cuda()
+            with torch_rng_context(make_subseed(base_seed, "rigid/skinning_field/grid")):
+                self.grid = create_voxel_grid(d, h, w).cuda()
 
-        self.lbs_network = get_skinning_mlp(3, cfg.d_out, cfg.skinning_network)
-
+        # Réseau de skinning (paramètres appris) — doit être déterministe
+        with torch_rng_context(make_subseed(base_seed, "rigid/skinning_field/lbs_net")):
+            self.lbs_network = get_skinning_mlp(3, cfg.d_out, cfg.skinning_network)
 
     def precompute(self, recompute_skinning=True):
         if recompute_skinning or not hasattr(self, "lbs_voxel_final"):
             d, h, w = self.resolution
-
             lbs_voxel_final = self.lbs_network(self.grid[0]).float()
             lbs_voxel_final = self.cfg.soft_blend * lbs_voxel_final
-
             lbs_voxel_final = self.softmax(lbs_voxel_final)
-
             self.lbs_voxel_final = lbs_voxel_final.permute(1, 0).reshape(1, 24, d, h, w)
 
     def get_forward_transform(self, xyz, tfs):
@@ -205,12 +210,10 @@ class SkinningField(RigidDeform):
         else:
             pred_weights = self.lbs_network(pts_skinning)
             pred_weights = self.softmax(pred_weights)
+
         skinning_loss = torch.nn.functional.mse_loss(
             pred_weights, sampled_weights, reduction='none').sum(-1).mean()
-        # breakpoint()
-
         return skinning_loss
-
 
     def forward(self, gaussians, iteration, camera):
         tfs = camera.bone_transforms
@@ -238,15 +241,14 @@ class SkinningField(RigidDeform):
 
     def regularization(self):
         loss_skinning = self.get_skinning_loss()
-        return {
-            'loss_skinning': loss_skinning
-        }
+        return {'loss_skinning': loss_skinning}
 
-def get_rigid_deform(cfg, metadata):
+
+def get_rigid_deform(cfg, metadata, root_seed=None): 
     name = cfg.name
     model_dict = {
         "identity": Identity,
         "smpl_nn": SMPLNN,
         "skinning_field": SkinningField,
     }
-    return model_dict[name](cfg, metadata)
+    return model_dict[name](cfg, metadata, root_seed=root_seed)

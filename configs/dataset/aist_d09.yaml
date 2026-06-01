@@ -1,0 +1,42 @@
+# @package dataset/aist_d09
+
+dataset_name: aist_d09
+
+dataset:
+  name: zjumocap
+  root_dir: "/data/"
+  subject: d09/gJB_sBM_cAll_mJB2_ch01
+  refine: false
+
+  # Views
+  train_views: [ '1' ]
+  val_views: [ '2', '3', '4', '5','6', '7', '8', '9' ]
+  test_views:
+    view:  [ '2', '3', '4', '5','6', '7', '8', '9' ]
+    video: [ '2' ]
+    all:   []
+  predict_views: [ '1']
+
+  # Frames (start, end, step)
+  train_frames: [ 0, 574, 1 ]
+  val_frames: [ 0, 1, 1 ]
+  test_frames:
+    view:  [ 0, 574, 30 ]
+    video: [ 0, 0, 1 ]
+    all:   [ 0, 0, 1 ]
+  predict_frames: [ 0, 0, 1 ]
+
+  # Target training resolution
+  img_hw:
+    - 540
+    - 960
+
+  # Native/original dataset resolution
+  orig_hw:
+    - 1080  # original height
+    - 1920  # original width
+
+  lanczos: false
+  resolution: -1
+  data_device: cuda
+  eval: false

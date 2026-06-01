@@ -64,7 +64,8 @@ class RefinedZJUMoCapDataset(Dataset):
 
         subject_dir = os.path.join(self.root_dir, self.subject)
         if split == 'predict':
-            predict_seqs = ['gBR_sBM_cAll_d04_mBR1_ch05_view1',
+            predict_seqs = ['second_person_poses_377',
+                            'gBR_sBM_cAll_d04_mBR1_ch05_view1',
                             'gBR_sBM_cAll_d04_mBR1_ch06_view1',
                             'MPI_Limits-03099-op8_poses_view1',
                             'canonical_pose_view1',]
@@ -385,7 +386,7 @@ class RefinedZJUMoCapDataset(Dataset):
             aabb = self.metadata['aabb']
             coord_min = aabb.coord_min.unsqueeze(0).numpy()
             coord_max = aabb.coord_max.unsqueeze(0).numpy()
-            n_points = 50_000
+            n_points = 20_000
 
             xyz_norm = np.random.rand(n_points, 3)
             xyz = xyz_norm * coord_min + (1. - xyz_norm) * coord_max
@@ -401,7 +402,7 @@ class RefinedZJUMoCapDataset(Dataset):
                 verts = self.metadata['smpl_verts']
                 faces = self.faces
                 mesh = trimesh.Trimesh(vertices=verts, faces=faces)
-                n_points = 50_000
+                n_points = 20_000
 
                 xyz = mesh.sample(n_points)
                 rgb = np.ones_like(xyz) * 255

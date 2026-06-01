@@ -1,0 +1,68 @@
+# @package _global_
+defaults:
+  - zju_386_mono@datasets.zju_386_mono
+  - zju_387_mono@datasets.zju_387_mono
+  - zju_377_mono@datasets.zju_377_mono
+  - zju_392_mono@datasets.zju_392_mono
+  - zju_315_mono@datasets.zju_315_mono
+  - zju_394_mono@datasets.zju_394_mono
+  - zju_390_mono@datasets.zju_390_mono
+  - zju_393_mono@datasets.zju_393_mono
+  
+
+dataset:
+  name: MultiPersonZJUMoCap
+  names: ['zju_386_mono','zju_387_mono','zju_377_mono','zju_392_mono','zju_315_mono','zju_394_mono','zju_393_mono','zju_390_mono'] 
+
+migs:
+  type: tt4d
+  delay: 1000
+  rank: null
+  tt_shape: null
+  # 3 groupes TT (c0, c1, c2) en 2D
+  tt_lrs: [1.6e-4, 1.6e-4, 1.6e-4]
+  tt_final_lrs: [1.6e-6, 1.6e-6, 1.6e-6]
+  verbose: true
+  add_identity: false
+  use_mars: false
+  # Ratio of parameter budget compared to CP(R=100). 
+  # Common values: 0.05 (5%), 0.10 (10%), 0.20 (20%)
+  target_ratio: 0.05
+
+  # Final number of identities (SVD starts with I=1 and expands to this value)
+  final_identities: 8
+  min_r1: 28  
+  r1_cap: 36
+  identity_bias: 0.90     # < 1.25 to calm r1
+  mid_boost: 1.15         # give more to 50–40–25
+  weight_power: 1.15      # favor larger modes a bit
+  # Optional manual hint for the rank right before M. 
+  # Set to null for automatic selection.
+  rM_hint: null
+
+  # Hard cap for the rank right before M (must be <= M). 
+  # For M=43, keep 43.
+  cap_last: 43
+
+  mars:
+    start_iter: 5000
+    init_keep_prob: 0.98
+    tau: { start: 2.0, end: 0.5, iters: 30000 }
+    l0_lambda: { start: 1.0e-5, end: 2.0e-4, iters: 30000 }
+    hard_concrete: { gamma: -0.1, zeta: 1.1 }
+    mask_core0: false                  # ne masque pas le cœur identité
+    mask_core4_broadcast_over_M: true  # masque (r4,1,r5) broadcasté sur M
+    r5_must_be_one: true               # garde r5=1 (chemin GEMM rapide)
+    effective_rank_eps: 1.0e-3
+    l0_weights: [1.0, 1.0, 1.0, 0.7]
+    report_every: 500
+
+  prune:
+    enabled: true
+    trigger: "on_plateau"
+    at_iter: null
+    threshold: 0.5
+    min_rank_per_link: 1
+    fine_tune: { enabled: true, iters: 2000, lr_scale: 0.3, keep_mars: false }
+
+appearance_identity: null

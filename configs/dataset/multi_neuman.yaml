@@ -1,0 +1,115 @@
+# @package _global_
+defaults:
+  - neuman_bike@datasets.neuman_bike
+  # - neuman_citron@datasets.neuman_citron
+  # - neuman_jogging@datasets.neuman_jogging
+  # - neuman_lab@datasets.neuman_lab
+  # - neuman_parkinglot@datasets.neuman_parkinglot
+  # - neuman_seattle@datasets.neuman_seattle
+
+dataset:
+  name: MultiPersonNeuMan
+  names:
+    - neuman_bike
+    # - neuman_citron
+    # - neuman_jogging
+    # - neuman_lab
+    # - neuman_parkinglot
+    # - neuman_seattle
+  smpl_uv_npz: "/src/body_models/misc/smpl_uv_coords.npz"
+  
+# migs:
+#   type: tt4d_uv
+
+#   init_rank: 64
+#   rank_geo: [1, 24, 32, 16, 1]
+#   rank_app: [1, 96, 128, 64, 1]
+#   uv_sampling_mode: baseline   # baseline | opacity_nearest | opacity_scale_nearest | all_nearest
+#   uv_confidence_mode: bilinear # bilinear | nearest
+
+#   # UV grid resolution
+#   uv_resolution: [128,128]   # (Nu, Nv) ou uv_resolution: 256
+#   # occupancy behavior
+#   bleed_iters: 64
+#   confidence_lambda: 2.0
+
+#   grid_budget: 96000
+#   grid_mode: voxel_size  
+#   grid_voxel_size: 0.01  
+#   #grid_min_res: 16
+#   #grid_max_res: 128
+#   empty_opacity_logit: -2.0
+#   grid_padding: 0.05
+#   use_folding: true
+#   use_packing: false
+#   fold_pack_axis: 1
+#   fold_pack_gap_ratio: 0.05
+#   save_foldpack_vis: true
+#   delay: 1000
+#   rank: null
+#   tt_shape: null
+#   verbose: true
+#   add_identity: false
+
+#   use_mars: false
+#   # tt_lrs: [1.6e-4, 1.6e-4, 1.6e-4,1.6e-4]
+#   # tt_final_lrs: [1.6e-6, 1.6e-6, 1.6e-6,1.6e-6]
+#   position_lr_init: 1.6e-4
+#   position_lr_final: 1.6e-6
+#   # tt_lrs: [1e-3, 1e-3, 1e-3, 1e-3]
+#   # tt_final_lrs: [1e-5 ,1e-5, 1e-5,1e-5]
+#   gaussian_vis:
+#     iterations: [1000, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+
+
+#   mars:
+#     pi: 0.1 #1e-3
+#     initial_mask_prob: 0.95
+    
+#     # Temperature (with slower decay)
+#     enable_temp_decay: true
+#     temperature: 1.0
+#     temp_gamma: 0.99995  #0.9998944 
+#     temp_end: 0.01 #0.3 #0.25 #0.3 #0.1 #0.2 #0.4 #0.05
+    
+#     # Training phases
+#     warmup_iterations: 5000 #12000 #10000 #15000
+#     mask_warmup_iterations: 15000 #5000 #6000 #5000 #10000
+#     phi_grad_delay: 0 #10000 #12000 #10000 #15000
+    
+#     # Stability
+#     min_mask_value: 0.0 #0.4
+#     grad_clip_value: 1.0 #5.0 #1.0
+    
+#     # Hard Concrete
+#     gamma: -0.1
+#     zeta: 1.1
+    
+#     # Optimization
+#     #reg_coef: 0.00025  #1e-3 #5e-4 #1e-4 #1e-6 #3e-5
+#     mars_lr: 0.0012  #2e-3 #1e-3#3e-4
+#     sigma_inv: 0.0
+    
+#     # Evaluation
+#     ste: false 
+#     eval_sample: false
+#     eval_logits_threshold: 0.0 #-0.5
+#     lambda_sparsity: 8e-6 #5e-6 #0.025 #0.1 #0.05 #0.01
+#     lambda_binary: 0.0 #0.015 #0.0125 #0.05 #0.025 #0.005
+
+    
+migs:
+
+  type: cp
+  rank: 10
+  use_mars: false 
+  n_repeat: 10
+  n_iteration: 10
+  verbose: 1
+  add_identity: false
+  gaussian_vis:
+    iterations: [1000, 5000, 10000, 20000, 30000, 40000, 50000]
+
+
+# Optional: pick a single person appearance globally
+appearance_identity: null

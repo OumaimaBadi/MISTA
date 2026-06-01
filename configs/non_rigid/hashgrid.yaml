@@ -26,7 +26,7 @@ model:
         base_resolution: 16
         per_level_scale: 1.447269237440378 # max reso 4096
         max_resolution: 2048
-
+        
       mlp:
         n_neurons: 128
         n_hidden_layers: 3

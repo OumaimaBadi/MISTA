@@ -1,0 +1,54 @@
+# @package dataset/neuman_lab
+
+dataset_name: neuman_lab
+
+dataset:
+  name: neuman
+  root_dir: "/data/"
+  subject: lab
+
+  # Views
+  train_views: [ '1' ]
+  val_views: [ '1' ]
+  test_views:
+    native: [ '1' ]
+    fixed:  [ '1' ]
+    list:   [ '1' ]
+  predict_views: [ '1' ]
+
+  # Frames = [start, end, step]
+  train_frames: [ 0, 0, 1 ]
+  val_frames: [ 0, 0, 1 ]
+  predict_frames: [ 0, 0, 1 ]
+  test_frames:
+    native: [ 0, 0, 1 ]
+    fixed:  [ 0, 0, 1 ]
+    list:   [ 0, 0, 1 ]
+
+  # Test camera policy
+  test_mode: native                 # native | fixed | list
+  test_camera_mode: native          # native | fixed | list
+  test_camera_frame: 0
+  test_camera_frames: []
+  test_num_frames: 0                # 0 = all selected frames
+
+  # Predict camera
+  predict_camera_frame: 0
+
+  # Freeview
+  freeview: false
+
+  # Image sizes
+  orig_hw: [711, 1265]
+  img_hw: [356, 632]
+
+  # Misc
+  white_background: true
+  padding: [0.05, 0.05, 0.05]
+  preload: true
+  train_smpl: true
+  random_init: false
+  lanczos: false
+  resolution: -1
+  data_device: cuda
+  eval: false

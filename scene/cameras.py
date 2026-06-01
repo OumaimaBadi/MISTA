@@ -24,10 +24,10 @@ class Camera:
         self.data['trans'] = np.array([0.0, 0.0, 0.0])
         self.data['scale'] = 1.0
 
-        self.data['original_image'] = self.image.clamp(0.0, 1.0).to(self.data_device)
+        self.data['original_image'] = self.image.clamp(0.0, 1.0).cpu()
         self.data['image_width'] = self.original_image.shape[2]
         self.data['image_height'] = self.original_image.shape[1]
-        self.data['original_mask'] = self.mask.float().to(self.data_device)
+        self.data['original_mask'] = self.mask.float().cpu()
 
         self.data['zfar'] = 100.0
         self.data['znear'] = 0.01
