@@ -13,9 +13,6 @@ import trimesh
 from human_body_prior.body_model.body_model import BodyModel
 
 
-# ---------------------------
-# Helpers (format cam style ZJU)
-# ---------------------------
 def to_dict_matrix(mat):
     mat = np.asarray(mat)
     out = {}
@@ -93,9 +90,6 @@ def ensure_dir(p):
     return p
 
 
-# ---------------------------
-# SMPL utils
-# ---------------------------
 def build_body_model(bm_path_neutral='body_models/smpl/neutral/model.pkl',
                      faces_npz='body_models/misc/faces.npz'):
     """
@@ -162,9 +156,6 @@ def smpl_per_frame_full(body_model, device,
     return out
 
 
-# ---------------------------
-# MAIN
-# ---------------------------
 def main():
     ap = argparse.ArgumentParser(description="Preprocess AIST++ (STRICT ZJU style)")
     ap.add_argument("--aist_root", required=True, help="Racine AIST++")
@@ -289,7 +280,7 @@ def main():
         if (i % 100) == 0:
             print(f"[SMPL] saved {i:06d}.npz")
 
-    print("✅ DONE: strict ZJU-style preprocessing for", seq_rel)
+    print(" DONE: strict ZJU-style preprocessing for", seq_rel)
     print("   cam_params.json + frames/masks + models/*.npz (complets)")
 
 
