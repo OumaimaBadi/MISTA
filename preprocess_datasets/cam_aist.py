@@ -59,4 +59,4 @@ if __name__ == "__main__":
     with open(args.out, "w") as f:
         json.dump(all_cam_params, f, indent=2)
 
-    print(f"✅ Caméras converties et sauvegardées dans {args.out}")
+    print(f"Caméras converties et sauvegardées dans {args.out}")
