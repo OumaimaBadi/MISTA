@@ -59,12 +59,12 @@ def compute_mars_probs(migs_module):
         dict: {"r1": array(n,), "r2": array(n,), "r3": array(n,), "r4": array(n,)}
               ou None si MARS n'est pas actif
     """
-    # ✅ Check if MARS is active
+    # Check if MARS is active
     if not hasattr(migs_module, "phi_logits_list"):
         print("  [MARS PROBS] No phi_logits_list found → MARS not active")
         return None
     
-    # ✅ Get temperature
+    # Get temperature
     temperature = float(getattr(migs_module, "temperature", 1.0))
     print(f"  [MARS PROBS] Using temperature = {temperature:.6f}")
     
@@ -72,7 +72,7 @@ def compute_mars_probs(migs_module):
     rank_names = ["r1", "r2", "r3", "r4"]
     
     with torch.no_grad():
-        # ✅ Case 1: MARS (shared masks) - phi_logits_list is direct ParameterList
+        # Case 1: MARS (shared masks) - phi_logits_list is direct ParameterList
         if hasattr(migs_module.phi_logits_list, "__iter__"):
             for i, (rank_name, logits) in enumerate(zip(rank_names, migs_module.phi_logits_list)):
                 # Compute soft mask: sigmoid(φ / T)
@@ -82,7 +82,7 @@ def compute_mars_probs(migs_module):
                 print(f"  [MARS PROBS] {rank_name}: shape={probs.shape}, "
                       f"min={probs.min():.4f}, max={probs.max():.4f}, mean={probs.mean():.4f}")
         
-        # ✅ Case 2: MARSPerBlock - phi_logits_list is dict[block_name -> ParameterList]
+        # Case 2: MARSPerBlock - phi_logits_list is dict[block_name -> ParameterList]
         elif isinstance(migs_module.phi_logits_list, dict):
             print("  [MARS PROBS] Detected MARSPerBlock → averaging across blocks")
             
@@ -104,10 +104,10 @@ def compute_mars_probs(migs_module):
                           f"shape={avg_probs.shape}, mean={avg_probs.mean():.4f}")
     
     if len(results) == 4:
-        print("  ✅ MARS probabilities computed successfully")
+        print("  MARS probabilities computed successfully")
         return results
     else:
-        print(f"  ⚠️ WARNING: Only {len(results)}/4 ranks computed")
+        print(f"  WARNING: Only {len(results)}/4 ranks computed")
         return None
 
 
