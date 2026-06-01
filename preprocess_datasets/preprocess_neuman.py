@@ -101,18 +101,11 @@ from scipy.spatial.transform import Rotation
 from human_body_prior.body_model.body_model import BodyModel
 
 
-# ---------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------
+
 
 def ensure_dir(p):
     os.makedirs(p, exist_ok=True)
     return p
-
-
-# ---------------------------------------------------------------------------
-# COLMAP parsers
-# ---------------------------------------------------------------------------
 
 def parse_cameras_txt(path):
     """
@@ -189,10 +182,6 @@ def parse_images_txt(path):
     return frames
 
 
-# ---------------------------------------------------------------------------
-# Alignment decomposition
-# ---------------------------------------------------------------------------
-
 def decompose_alignment(A):
     """
     Decompose alignment matrix A (4, 3) into scale, rotation, translation.
@@ -224,9 +213,6 @@ def decompose_alignment(A):
     return s, R_align, t
 
 
-# ---------------------------------------------------------------------------
-# SMPL per-frame processing
-# ---------------------------------------------------------------------------
 
 def load_body_model(bm_path, faces_npz, device):
     bm = BodyModel(bm_path=bm_path, num_betas=10, batch_size=1).to(device)
@@ -316,9 +302,6 @@ def smpl_for_frame(
     )
 
 
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
 
 def main():
     ap = argparse.ArgumentParser(
@@ -354,9 +337,7 @@ def main():
     seq_dir = args.neuman_seq
     out_dir = ensure_dir(args.out_dir)
 
-    # ------------------------------------------------------------------ #
-    # 1. LOAD COLMAP CAMERAS
-    # ------------------------------------------------------------------ #
+
     sparse_dir = os.path.join(seq_dir, "sparse")
     cameras_txt = os.path.join(sparse_dir, "cameras.txt")
     images_txt = os.path.join(sparse_dir, "images.txt")
@@ -384,9 +365,7 @@ def main():
     D = [[0.0], [0.0], [0.0], [0.0], [0.0]]
     S = [[W], [H]]
 
-    # ------------------------------------------------------------------ #
-    # 2. LOAD ALIGNMENTS EARLY
-    # ------------------------------------------------------------------ #
+
     align_path = os.path.join(seq_dir, "alignments.npy")
     if not os.path.exists(align_path):
         raise FileNotFoundError(f"Not found: {align_path}")
@@ -394,10 +373,6 @@ def main():
     alignments = np.load(align_path, allow_pickle=True).item()
     print(f"[INFO] alignments loaded for {len(alignments)} frames")
 
-    # ------------------------------------------------------------------ #
-    # 3. BUILD cam_params.json
-    #    One logical camera, per-frame extrinsics normalized by alignment scale
-    # ------------------------------------------------------------------ #
     cam_params = {
         "all_cam_names": ["1"],
         "1": {
@@ -447,9 +422,6 @@ def main():
     print(f"[INFO] camera normalization scale stats: "
           f"min={min(cam_scales):.4f}  max={max(cam_scales):.4f}  mean={np.mean(cam_scales):.4f}")
 
-    # ------------------------------------------------------------------ #
-    # 4. COPY IMAGES & MASKS
-    # ------------------------------------------------------------------ #
     images_dir = os.path.join(seq_dir, "images")
     masks_dir = os.path.join(seq_dir, "segmentations")
     cam_out = ensure_dir(os.path.join(out_dir, "1"))
@@ -482,9 +454,6 @@ def main():
 
     print("[OK] images + masks copied")
 
-    # ------------------------------------------------------------------ #
-    # 5. LOAD SMPL DATA
-    # ------------------------------------------------------------------ #
     opt_pkl = os.path.join(seq_dir, "smpl_output_optimized.pkl")
     if not os.path.exists(opt_pkl):
         raise FileNotFoundError(f"Not found: {opt_pkl}")
@@ -505,9 +474,6 @@ def main():
     ).astype(np.float32)
     print(f"[INFO] mean betas (first 3): {mean_betas[:3]}")
 
-    # ------------------------------------------------------------------ #
-    # 6. RUN SMPL PER FRAME -> models/*.npz
-    # ------------------------------------------------------------------ #
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[INFO] SMPL device: {device}")
 
