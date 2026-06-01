@@ -5,9 +5,7 @@ from tqdm import tqdm
 from contextlib import nullcontext, contextmanager 
 import torch.nn.functional as F
 
-# ============================================================
-#  Helpers: unwrap TT (MARS / adapter) + "RAW decode" patching
-# ============================================================
+
 
 def unwrap_tt_module(scene):
     """
@@ -49,9 +47,6 @@ def force_raw_decode_in_scene(scene, tt_module):
         migs.get_W_for_identity = orig
 
 
-# ============================================================
-#  TT core4 split handling
-# ============================================================
 
 def _has_split_core4(tt_module):
     core4_names = [
@@ -72,9 +67,7 @@ def _core4_parts(tt_module):
     return parts
 
 
-# ============================================================
-#  Masking: rank component ablation (robust)
-# ============================================================
+
 
 @contextmanager
 def mask_component(tt_module, rank_idx, component_idx):
@@ -137,9 +130,6 @@ def mask_component(tt_module, rank_idx, component_idx):
 
 
 
-# ============================================================
-#  ΔW: per identity (RAW by default, optional normalize)
-# ============================================================
 
 def compute_delta_W_single(
     tt_module,
@@ -214,9 +204,6 @@ def compute_delta_W_all(
     return results
 
 
-# ============================================================
-#  Loss weights schedule: FIXED
-# ============================================================
 
 def _C(iteration, value):
     if value is None:
@@ -239,7 +226,7 @@ def _C(iteration, value):
         if len(value) == 0:
             return 0.0
 
-        # ✅ IMPORTANT: odd length -> fallback to last value
+
         if len(value) % 2 != 0:
             return float(value[-1])
 
@@ -261,9 +248,6 @@ def _C(iteration, value):
 
 
 
-# ============================================================
-#  Losses on samples (RAW vs MARS selectable)
-# ============================================================
 
 def compute_losses_on_samples(
     scene,
@@ -400,9 +384,6 @@ def compute_losses_on_samples(
     return acc
 
 
-# ============================================================
-#  ΔLoss per component (RAW vs MARS selectable)
-# ============================================================
 
 def compute_delta_for_component(
     scene,
@@ -479,7 +460,7 @@ def compute_delta_all_components(
     iteration,
     lpips_fn=None,
     rank_names=("r1","r2","r3","r4"),
-    decode_mode="raw",      # <<< IMPORTANT
+    decode_mode="raw",   
     normalize_deltaW=True,
 ):
     """
