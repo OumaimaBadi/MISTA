@@ -42,22 +42,13 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
         rank_dir = base_dir / rank_name
         rank_dir.mkdir(parents=True, exist_ok=True)
 
-        # ------------------------
-        # 1) Load base signals
-        # ------------------------
         frob_L = np.asarray(frobenius[rank_name]['frob_L']).reshape(-1)
         frob_R = np.asarray(frobenius[rank_name]['frob_R']).reshape(-1)
         n = int(len(frob_L))
 
-        # ------------------------
-        # 2) Load ΔW
-        # ------------------------
         dW_mean = delta_W[rank_name]["deltaW_mean"]
         dW_max  = delta_W[rank_name]["deltaW_max"]
 
-        # ------------------------
-        # 3) Load ΔLoss summary
-        # ------------------------
         summ = delta_loss[rank_name]["summary"]
         dQ_mean = summ["deltaLquality_mean"]
         dQ_max  = summ["deltaLquality_max"]
@@ -66,25 +57,16 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
         dR_mean = summ["deltaLreg_mean"]
         dR_max  = summ["deltaLreg_max"]
 
-        # ------------------------
-        # 4) Load MARS mask (hard, 0 or 1)
-        # ------------------------
         if mars_masks is not None and (rank_name in mars_masks):
             mask = mars_masks[rank_name].detach().cpu().numpy().reshape(-1)
         else:
             mask = np.full(n, np.nan, dtype=np.float32)
 
-        # ------------------------
-        # 5) ✅ NOUVEAU : Load MARS probabilities (soft, σ(φ/T))
-        # ------------------------
         if mars_probs is not None and (rank_name in mars_probs):
             mars_prob = mars_probs[rank_name].reshape(-1)
         else:
             mars_prob = np.full(n, np.nan, dtype=np.float32)
 
-        # ------------------------
-        # 6) Align lengths
-        # ------------------------
         frob_L    = fix_len(frob_L,    n, f"{rank_name}/frob_L")
         frob_R    = fix_len(frob_R,    n, f"{rank_name}/frob_R")
         dW_mean   = fix_len(dW_mean,   n, f"{rank_name}/deltaW_mean")
@@ -96,7 +78,7 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
         dR_mean   = fix_len(dR_mean,   n, f"{rank_name}/deltaLreg_mean")
         dR_max    = fix_len(dR_max,    n, f"{rank_name}/deltaLreg_max")
         mask      = fix_len(mask,      n, f"{rank_name}/mars_mask")
-        mars_prob = fix_len(mars_prob, n, f"{rank_name}/mars_prob")  # ✅ NOUVEAU
+        mars_prob = fix_len(mars_prob, n, f"{rank_name}/mars_prob")  
 
         # Derived metrics
         frob_prod = frob_L * frob_R
@@ -106,9 +88,6 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
         has_mask = np.isfinite(mask).any()
         has_prob = np.isfinite(mars_prob).any()
 
-        # ------------------------
-        # 7) ✅ CSV avec mars_prob
-        # ------------------------
         df = pd.DataFrame({
             "component_id": np.arange(n),
 
@@ -129,7 +108,7 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
             "deltaL_reg_max": dR_max,
 
             "mars_mask": mask,              # Hard mask (0 or 1)
-            "mars_prob": mars_prob,         # ✅ NOUVEAU: Soft probability σ(φ/T)
+            "mars_prob": mars_prob,
             
             "mars_status": (
                 ["active" if m > 0.5 else "pruned" for m in mask]
@@ -139,9 +118,6 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
 
         df.to_csv(rank_dir / "metrics_complete.csv", index=False, float_format="%.6f")
 
-        # ------------------------
-        # 8) TXT summary
-        # ------------------------
         corr_frob_prob = safe_corr(frob_sum, mars_prob) if has_prob else np.nan
         corr_dW_prob   = safe_corr(dW_mean, mars_prob)  if has_prob else np.nan
 
@@ -180,9 +156,6 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
                 f.write(f"  Min:  {np.nanmin(mars_prob):.4f}\n")
                 f.write(f"  Max:  {np.nanmax(mars_prob):.4f}\n\n")
 
-        # ------------------------
-        # 9) PDF (4 graphs) ← NOUVEAU graph avec mars_prob
-        # ------------------------
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 
         # Graph 1: Frob_L vs Frob_R
@@ -209,7 +182,7 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
         axes[1, 0].axhline(0.5, color="red", linestyle="--", alpha=0.5)
         axes[1, 0].grid(True, alpha=0.3)
 
-        # Graph 4: ✅ NOUVEAU - ΔL_quality_mean vs MARS prob (soft σ)
+
         if has_prob:
             axes[1, 1].scatter(dQ_mean, mars_prob, alpha=0.6, s=80, c='orange')
             axes[1, 1].set_xlabel("ΔL_quality_mean", fontsize=12)
@@ -229,9 +202,6 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
         plt.savefig(rank_dir / "visualization.pdf", dpi=150, bbox_inches="tight")
         plt.close()
 
-        # ------------------------
-        # 10) JSON summary
-        # ------------------------
         summary_json = {
             "rank": rank_name,
             "iteration": int(iteration),
@@ -248,4 +218,4 @@ def generate_reports(output_dir, iteration, frobenius, delta_W, delta_loss, mars
         with open(rank_dir / "summary.json", "w") as f:
             json.dump(summary_json, f, indent=2)
 
-    print(f"✅ Reports generated in: {base_dir}")
+    print(f" Reports generated in: {base_dir}")
