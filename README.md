@@ -37,11 +37,12 @@ Download links:
 
 | Resource                   | Link        |
 | -------------------------- | ----------- |
-| Singularity image          | Coming soon |
-| MISTA pretrained models    | Coming soon |
-| MISTA-AR pretrained models | Coming soon |
-| MIGS Rank-10 checkpoints   | Coming soon |
-| MIGS Rank-100 checkpoints  | Coming soon |
+| Singularity image          | [Download](https://drive.google.com/file/d/1qlvbzLRj3HTjnJF7AG4D-blOPADvj9g-/view?usp=drive_link) |
+| MISTA pretrained model    | [Download](https://drive.google.com/file/d/1j2c7ZdcAfkJSGyjlgxKfHi7q6fhVR3m1/view?usp=drive_link) |
+| MISTA no Hilbert pretrained model    |[Download](https://drive.google.com/file/d/1MQIz64GXHD_JzIzi8bGdXZkqZeNF8NxS/view?usp=drive_link) |
+| MISTA-AR pretrained model | [Download](https://drive.google.com/file/d/1fgibV4yhadyJQmyRdX6qZKsL_t8yD8eR/view?usp=drive_link) |
+| MIGS Rank-10 checkpoint   | [Download](https://drive.google.com/file/d/1bCRP93p9esL6pheGFOYEogQhkRoLnDLQ/view?usp=drive_link) |
+| MIGS Rank-100 checkpoint  | [Download](https://drive.google.com/file/d/1FtSojegVHJCrx5OJbCoxA_uqyVL-y9Xc/view?usp=drive_link) |
 
 ---
 
