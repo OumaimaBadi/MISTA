@@ -191,14 +191,14 @@ If you use this repository, pretrained models, datasets, or any part of this wor
 ```bibtex
 @inproceedings{badi2026mista,
   title={MISTA: Compact Multi-Identity Structure-Aware Tensorized Avatars},
-  author={Badi, Oumaima and Jiang, Xudong and Morin, Luce and Sjöström, Mårten},
+  author={Badi, Oumaima and Jiang, Xiaoran and Morin, Luce and Sjöström, Mårten},
   booktitle={Proceedings of the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
   year={2026}
 }
 
 @inproceedings{badi2026mista_ar,
   title={Une représentation 3DGS de rangs faibles auto-sélectionnés pour les avatars multi-identités},
-  author={Badi, Oumaima and Jiang, Xudong and Morin, Luce and Sjöström, Mårten},
+  author={Badi, Oumaima and Jiang, Xiaoran and Morin, Luce and Sjöström, Mårten},
   booktitle={Actes de CORESA},
   address={Nantes, France},
   year={2026}
