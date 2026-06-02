@@ -7,9 +7,14 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 # Singularity & bind
-SIF=/data/calcul0/obadi/MIGS/img_avatar4.sif
-BIND_DATA=/data/lab_ietr/obadi/3DGS_Avatar/Prepared_dataset/:/data/
-BIND_SRC=/data/calcul0/obadi/MIGS/:/src/
+# Path to the Singularity image
+SIF=path to your Singularity image
+
+# Bind mount the dataset directory inside the container as /data/
+BIND_DATA=/path to your dataset/:/data/
+
+# Bind mount the source code directory inside the container as /src/
+BIND_SRC=/path to your source code/:/src/
 
 # Paramètres uniques
 WANDB_PROJECT="mista"
