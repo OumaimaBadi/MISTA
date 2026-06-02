@@ -67,41 +67,19 @@ python extract_smpl_parameters.py
 
 ## Dataset Preparation
 
-Due to licensing restrictions, preprocessed datasets cannot be redistributed.
+Due to dataset licensing restrictions, we cannot publicly distribute the preprocessed ZJU-MoCap data.
 
-The repository currently supports:
+Users should download the original dataset and follow the preprocessing procedure described in the ARAH repository:
 
-* ZJU-MoCap
-* SMPL-based custom datasets
+https://github.com/taconite/arah-release
+
+The resulting processed data can then be used directly with the MISTA framework.
 
 Please prepare datasets according to the configuration files located in:
 
 ```text
 configs/dataset/
 ```
-
----
-
-## Repository Structure
-
-```text
-configs/
-dataset/
-gaussian_renderer/
-human_body_prior/
-models/
-preprocess_datasets/
-scene/
-submodules/
-utils/
-
-environment.yml
-extract_smpl_parameters.py
-prune_model.py
-render.py
-train5d_mars.py
-```
-
 ---
 
 ## Training
