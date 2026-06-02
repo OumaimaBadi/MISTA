@@ -13,10 +13,8 @@ The framework supports:
 * Multi-identity avatar modeling
 * Motion transfer between subjects
 * Novel pose synthesis
-* Tensorized Gaussian representations
 * Adaptive rank selection
 * Tensor Train and CP-based representations
-* Efficient compression of Gaussian avatar parameters
 
 ---
 
