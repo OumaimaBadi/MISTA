@@ -18,42 +18,6 @@ The framework supports:
 
 ---
 
-## Associated Publications
-
-This repository accompanies the following publications:
-
-### MISTA
-
-O. Badi, X. Jiang, L. Morin, and M. Sjöström,
-
-**"MISTA: Compact Multi-Identity Structure-Aware Tensorized Avatars"**
-
-Proceedings of the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), 2026.
-
-### MISTA-AR
-
-O. Badi, X. Jiang, L. Morin, and M. Sjöström,
-
-**"Une représentation 3DGS de rangs faibles auto-sélectionnés pour les avatars multi-identités"**
-
-Actes de CORESA 2026, Nantes, France, 2026.
-
----
-
-## Features
-
-* Multi-identity Gaussian avatar modeling
-* Tensor Train tensorization
-* CP decomposition baseline
-* Adaptive rank selection with MARS
-* Motion transfer
-* Novel-view synthesis
-* Novel-pose synthesis
-* ZJU-MoCap support
-* Singularity-based deployment
-
----
-
 ## Installation
 
 ### Clone Repository
