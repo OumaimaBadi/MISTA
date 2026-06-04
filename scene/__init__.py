@@ -16,18 +16,7 @@ from models import GaussianConverter
 from scene.gaussian_model import GaussianModel
 from dataset import load_dataset
 from models.cp_migs_module import CPMIGSModule
-from models.tucker_migs_module import TuckerMIGSModule
-from models.tt_migs_module_4d import TTUltraMIGSModule4D
 from models.mista import MISTA
-from models.mista_perblock import MISTAPerBlock 
-from models.per_Parameter_Type_TT.mista_xyz import MISTAxyz
-from models.per_Parameter_Type_TT.mista_rotation import MISTArotation
-from models.per_Parameter_Type_TT.mista_scaling import MISTAscaling
-from models.per_Parameter_Type_TT.mista_dc import MISTAdc
-from models.per_Parameter_Type_TT.mista_rest import MISTArest
-from models.per_Parameter_Type_TT.mista_opacity import MISTAopacity
-from models.mista_color_split import MISTAColorSplit
-from models.tt_migs_module_6d import TTUltraMIGSModule6D
 from utils.snapshot_hooks import maybe_dump_gaussians
 from utils.general_utils import make_subseed, torch_rng_context
 from models.importance_analysis.frobenius import compute_frobenius_LR
@@ -41,20 +30,7 @@ from models.importance_analysis.reporter import generate_reports
 
 MIGS_CLASS_MAP = {
     "cp": CPMIGSModule,
-    "tt6d": TTUltraMIGSModule6D,
     "tt5d": MISTA,
-    "tt5d_perblock": MISTAPerBlock,
-    "tt4d": TTUltraMIGSModule4D,
-    "tucker": TuckerMIGSModule,
-
-    # Per-parameter TT (5D)
-    "tt5d_xyz": MISTAxyz,
-    "tt5d_rotation": MISTArotation,
-    "tt5d_scaling": MISTAscaling,
-    "tt5d_dc": MISTAdc,
-    "tt5d_rest": MISTArest,
-    "tt5d_opacity": MISTAopacity,
-    "tt5d_color_split": MISTAColorSplit,
 }
 TT_MIGS_TYPES = (
     "tt4d", "tt5d", "tt6d", "tt5d_perblock",
@@ -981,8 +957,6 @@ class Scene:
             # CP/Tucker (no MARS support)
             if self.migs_type == "cp":
                 self.migs_module = CPMIGSModule(self.cfg)
-            else:
-                self.migs_module = TuckerMIGSModule(self.cfg)
             
             self.migs_module.init_from_tensor(self.gaussians)
             
@@ -1004,18 +978,7 @@ class Scene:
         elif self.migs_type in TT_MIGS_TYPES:
             # Step 1: Create BASE TT module
             class_map = {
-                "tt4d": TTUltraMIGSModule4D,
                 "tt5d": MISTA,
-                "tt6d": TTUltraMIGSModule6D,
-                "tt5d_perblock": MISTAPerBlock,
-
-                "tt5d_xyz": MISTAxyz,
-                "tt5d_rotation": MISTArotation,
-                "tt5d_scaling": MISTAscaling,
-                "tt5d_dc": MISTAdc,
-                "tt5d_rest": MISTArest,
-                "tt5d_opacity": MISTAopacity,
-                "tt5d_color_split": MISTAColorSplit, 
             }
             base_tt = class_map[self.migs_type](self.cfg)
             if not getattr(self.cfg.migs, 'skip_init_from_tensor', False):
