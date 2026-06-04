@@ -20,7 +20,6 @@ from models.mista import MISTA
 from utils.snapshot_hooks import maybe_dump_gaussians
 from utils.general_utils import make_subseed, torch_rng_context
 from models.importance_analysis.frobenius import compute_frobenius_LR
-from models.AutRank.tt_mars_adapter_perblock import TensorizedTTAdapterPerBlock
 from models.AutRank.tt_mars_adapter import TensorizedTTAdapter
 from models.AutRank.mars import MARS
 
