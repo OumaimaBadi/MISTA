@@ -23,7 +23,6 @@ from models.importance_analysis.frobenius import compute_frobenius_LR
 from models.AutRank.tt_mars_adapter_perblock import TensorizedTTAdapterPerBlock
 from models.AutRank.tt_mars_adapter import TensorizedTTAdapter
 from models.AutRank.mars import MARS
-from models.AutRank.mars_perblock import MARSPerBlock
 
 from models.importance_analysis.ablation import compute_delta_W_all, compute_delta_all_components
 from models.importance_analysis.reporter import generate_reports
@@ -44,10 +43,9 @@ def _unwrap_tt_module_from_scene(scene):
     Compatible:
       - scene.migs_module direct
       - MARS(wrapper).tensorized_model.tt
-      - MARSPerBlock(wrapper).tensorized_model.tt
     """
     m = scene.migs_module
-    m = getattr(m, "tensorized_model", m)  # unwrap MARS/MARSPerBlock
+    m = getattr(m, "tensorized_model", m)  # unwrap MARS
     m = getattr(m, "tt", m)               # unwrap adapter (tt)
     return m
 
@@ -135,9 +133,7 @@ class Scene:
 
         self.root_seed = int(getattr(cfg, "seed", 123))
 
-        # -----------------------
-        # Dataset setup
-        # -----------------------
+
         if cfg.mode == "predict":
             self.train_dataset = load_dataset(cfg, split="train")
             self.test_dataset  = load_dataset(cfg, split="predict")
@@ -214,11 +210,6 @@ class Scene:
                 tt_adapter = TensorizedTTAdapter(base_migs)
                 self.migs_module = MARS(tt_adapter, **mars_kwargs)
                 print(f"[MARS ENABLED] TT-based MIGS ({self.migs_type}) wrapped with MARS.")
-            elif self.migs_type == "tt5d_perblock":
-                # Independent masks per block
-                tt_adapter = TensorizedTTAdapterPerBlock(base_migs)
-                self.migs_module = MARSPerBlock(tt_adapter, **mars_kwargs)
-                print(f"[MARS ENABLED] TT5D-PerBlock MIGS wrapped with MARS (independent per block).")
             else:
                 self.migs_module = base_migs
                 print(f"[MIGS] Using base MIGS (no MARS wrapper).")
@@ -1018,23 +1009,14 @@ class Scene:
             # Step 2: Wrap with MARS if needed
             if use_mars:
                 # Import MARS classes
-                from models.AutRank.mars import MARS
-                from models.AutRank.mars_perblock import MARSPerBlock
-                from models.AutRank.tt_mars_adapter import TensorizedTTAdapter
-                from models.AutRank.tt_mars_adapter_perblock import TensorizedTTAdapterPerBlock
                 
                 # Get MARS config
                 mars_cfg = self.cfg.migs.get("mars", {})
                 mars_kwargs = {k: v for k, v in mars_cfg.items() 
                             if k in MARS.__init__.__code__.co_varnames}
                 
-                # Build wrapper based on type
-                if self.migs_type == "tt5d_perblock":
-                    adapter = TensorizedTTAdapterPerBlock(base_tt)
-                    self.migs_module = MARSPerBlock(adapter, **mars_kwargs)
-                else:
-                    adapter = TensorizedTTAdapter(base_tt)
-                    self.migs_module = MARS(adapter, **mars_kwargs)
+                adapter = TensorizedTTAdapter(base_tt)
+                self.migs_module = MARS(adapter, **mars_kwargs)
                 
                 print(f"[Checkpoint] Rebuilt MARS wrapper for {self.migs_type}")
             else:
