@@ -143,15 +143,26 @@ python render.py mode=test
 ```bash
 python render.py \
 mode=test \
-dataset.test_mode=view
+dataset.test_mode=view \
+dataset=migs_multi_zju_5d_mars \
+opt.iterations=50000 \
+migs.type=tt5d \
+migs.use_mars=false \
+appearance_identity=0 // 0:386, 1:387, 2:377, 3:392, 4:315, 5:394, 6:393, 7:390
+load_ckpt=/path/to/ckpt50000.pth
 ```
 
 ### Novel Pose Synthesis
 
 ```bash
-python render.py \
-mode=test \
-dataset.test_mode=pose
+python render.py mode=predict \
+dataset=migs_multi_zju_5d_mars \
+opt.iterations=50000 \
+migs.type=tt5d \
+migs.use_mars=false \
+dataset.predict_seq= 0 // 0,1,2,3, to try differnt dances
+appearance_identity=0 // 0:386, 1:387, 2:377, 3:392, 4:315, 5:394, 6:393, 7:390
+load_ckpt=/path/to/ckpt50000.pth
 ```
 
 ---
